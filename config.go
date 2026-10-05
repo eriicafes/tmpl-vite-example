@@ -1,8 +1,10 @@
 package main
 
 import (
+	"cmp"
 	"flag"
 	"fmt"
+	"os"
 )
 
 type Config struct {
@@ -15,12 +17,14 @@ func (c Config) ListenAddr() string {
 }
 
 func getConfig() Config {
-	prod := flag.Bool("prod", false, "production mode")
-	port := flag.String("port", "8000", "application port")
+	dev := flag.Bool("dev", false, "development mode")
+	// port := flag.String("port", "8000", "application port")
 	flag.Parse()
 
+	port := cmp.Or(os.Getenv("PORT"), "8000")
+
 	return Config{
-		Prod: *prod,
-		Port: *port,
+		Prod: !*dev,
+		Port: port,
 	}
 }

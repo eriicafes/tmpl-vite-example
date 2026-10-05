@@ -3,8 +3,10 @@ package main
 import (
 	"log"
 	"net/http"
+	"os"
 
 	"github.com/eriicafes/tmpl"
+	"github.com/eriicafes/tmpl/vite"
 )
 
 type Entry struct {
@@ -16,7 +18,6 @@ func main() {
 	templates := setupTemplates(!config.Prod)
 
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		tr := templates.Renderer()
 		spas := map[string]Entry{
 			"react":  {"Tmpl React", "src/react/index.tsx"},
 			"svelte": {"Tmpl Svelte", "src/svelte/index.ts"},
@@ -27,10 +28,32 @@ func main() {
 			entry = Entry{"Tmpl Vanilla", ""}
 		}
 
-		if err := tr.Render(w, tmpl.Tmpl("spa", entry)); err != nil {
+		if err := templates.Render(w, tmpl.Tmpl("spa", entry)); err != nil {
 			log.Println(err)
 		}
 	})
 	http.Handle("/", templates.Vite.ServePublic(handler))
 	http.ListenAndServe(config.ListenAddr(), nil)
+}
+
+type Templates struct {
+	*tmpl.Templates
+	*vite.Vite
+}
+
+func setupTemplates(dev bool) Templates {
+	v, err := vite.New(vite.Config{
+		Dev:       dev,
+		Output:    os.DirFS("frontend/dist"),
+		DevOrigin: "http://localhost:5273",
+	})
+	if err != nil {
+		panic(err)
+	}
+	tp := tmpl.New(os.DirFS("templates")).
+		Funcs(v.Funcs()).
+		Load("spa").
+		MustParse()
+
+	return Templates{tp, v}
 }
